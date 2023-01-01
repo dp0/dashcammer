@@ -1,3 +1,9 @@
+dashcammer (0.0.2) UNRELEASED; urgency=low
+
+  * Change install location
+
+ -- Daniel Playle <code@danplayle.com>  Sun, 01 Jan 2023 21:28:00 +0000
+
 dashcammer (0.0.1) UNRELEASED; urgency=low
 
   * Initial release. Closes: #nnnn

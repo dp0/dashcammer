@@ -1,0 +1,6 @@
+dashcammer (0.0.1) UNRELEASED; urgency=low
+
+  * Initial release. Closes: #nnnn
+    <nnnn is the bug number of your ITP>
+
+ -- Daniel Playle <code@danplayle.com>  Sun, 01 Jan 2023 19:37:47 +0000

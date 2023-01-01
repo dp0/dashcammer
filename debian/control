@@ -1,0 +1,14 @@
+Source: dashcammer
+Section: unknown
+Priority: optional
+Maintainer: Daniel Playle <code@danplayle.com>
+Build-Depends: debhelper (>=11~)
+Standards-Version: 4.1.4
+Homepage: <https://github.com/dp0/dashcammer>
+
+Package: dashcammer
+Architecture: any
+Multi-Arch: foreign
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Dashcam for the Raspberry Pi with a High
+ Quality Camera module.

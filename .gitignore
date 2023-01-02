@@ -1,0 +1,8 @@
+debian/.debhelper/
+debian/dashcammer.postinst.debhelper
+debian/dashcammer.postrm.debhelper
+debian/dashcammer.prerm.debhelper
+debian/dashcammer.substvars
+debian/dashcammer
+debian/debhelper-build-stamp
+debian/files

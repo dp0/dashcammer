@@ -1,8 +1,67 @@
-#!/bin/bash
+#!/usr/bin/env python3
 
-VIDEO_TEMP_LOCATION=/var/tmp/dashcammer
+import datetime
+import glob
+import os
+import sys
+import threading
+import time
 
-mkdir -p "$VIDEO_TEMP_LOCATION"
+from picamera import PiCamera
 
-raspivid -w 1920 -h 1080 -fps 25 -b 15000000 --segment 60000 -t 0 \
-    -o "$VIDEO_TEMP_LOCATION/%FT%T%z.h264"
+# Location of the semi-temporary video files from the camera
+VIDEO_TEMP_LOCATION = "/var/tmp/dashcammer"
+# Number of video files to keep
+VIDEO_TEMP_KEEP = 120
+# Video file attributes
+RESOLUTION = (1920, 1080)
+FRAMERATE = 25
+BITRATE = 15000000
+QUALITY = 25
+CLIP_TIME_SECONDS = 60
+
+
+def ensure_directories():
+    directories = [
+        '/var/tmp/dashcammer'
+    ]
+    for directory in directories:
+        os.makedirs(directory, exist_ok=True)
+
+def camera_worker():
+    def filename_generator():
+        while True:
+            datetime_iso8601 = datetime.datetime.now().astimezone().replace(microsecond=0).isoformat()
+            yield os.path.join(VIDEO_TEMP_LOCATION, f'{datetime_iso8601}.h264')
+
+    with PiCamera(resolution=RESOLUTION, framerate=FRAMERATE) as camera:
+        for filename in camera.record_sequence(filename_generator(),
+                bitrate=BITRATE, quality=QUALITY):
+            print(filename)
+            camera.wait_recording(CLIP_TIME_SECONDS)
+
+def retention_worker():
+    while True:
+        video_files = glob.glob(os.path.join(VIDEO_TEMP_LOCATION, '*.h264'))
+        video_files.sort(key=os.path.getmtime)
+        # Delete all but the latest 120 videos
+        for video_file in video_files[:-120]:
+            os.unlink(video_file)
+        # We shouldn't need to sleep for any less than this time as videos
+        # *should* only be produced at this rate
+        time.sleep(CLIP_TIME_SECONDS)
+
+def main():
+    ensure_directories()
+
+    camera_thread = threading.Thread(target=camera_worker)
+    camera_thread.start()
+
+    retention_thread = threading.Thread(target=retention_worker)
+    retention_thread.start()
+
+    retention_thread.join()
+    camera_thread.join()
+
+if __name__ == '__main__':
+    sys.exit(main())

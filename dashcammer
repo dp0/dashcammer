@@ -1,6 +1,8 @@
 #!/bin/bash
 
-mkdir -p /home/dashcam/videos/all
+VIDEO_TEMP_LOCATION=/var/tmp/dashcammer
+
+mkdir -p "$VIDEO_TEMP_LOCATION"
 
 raspivid -w 1920 -h 1080 -fps 25 -b 15000000 --segment 60000 -t 0 \
-    -o '/home/dashcam/videos/all/%FT%T%z.h264'
+    -o "$VIDEO_TEMP_LOCATION/%FT%T%z.h264"

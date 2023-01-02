@@ -1,1 +1,2 @@
 dashcammer usr/bin/
+service/dashcammer.service lib/systemd/system/

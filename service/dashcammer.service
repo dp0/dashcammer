@@ -1,0 +1,9 @@
+[Unit]
+Description=Raspberry Pi Dashcam
+
+[Service]
+User=dashcam
+ExecStart=/usr/bin/dashcammer
+
+[Install]
+WantedBy=multi-user.target

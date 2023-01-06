@@ -35,6 +35,7 @@ def camera_worker():
             yield os.path.join(VIDEO_TEMP_LOCATION, f'{datetime_iso8601}.h264')
 
     with PiCamera(resolution=RESOLUTION, framerate=FRAMERATE) as camera:
+        camera.rotation = 180
         for filename in camera.record_sequence(filename_generator(),
                 bitrate=BITRATE, quality=QUALITY):
             print(filename)

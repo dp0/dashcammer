@@ -1,11 +1,12 @@
-dashcammer (0.2.0) UNRELEASED; urgency=low
+dashcammer (0.2.1) UNRELEASED; urgency=low
 
   [ Daniel Playle ]
   * Keep install location consistent and support systemd
   * Use /var/tmp/dashcammer for video location
   * Remove all but latest 120 video files
+  * Rotate video by 180 degrees
 
- -- Daniel Playle <code@danplayle.com>  Mon, 02 Jan 2023 18:29:50 +0000
+ -- Daniel Playle <code@danplayle.com>  Fri, 06 Jan 2023 20:12:44 +0000
 
 dashcammer (0.0.1) UNRELEASED; urgency=low
 

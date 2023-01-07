@@ -7,7 +7,7 @@ import sys
 import threading
 import time
 
-from picamera import PiCamera
+from picamera import PiCamera, Color
 
 # Location of the semi-temporary video files from the camera
 VIDEO_TEMP_LOCATION = "/var/tmp/dashcammer"
@@ -19,6 +19,10 @@ FRAMERATE = 25
 BITRATE = 15000000
 QUALITY = 25
 CLIP_TIME_SECONDS = 60
+# Extras
+TIMESTAMP_FORMAT = '%Y-%m-%d %H:%H:%S'
+TIMESTAMP_FOREGROUND = '#000000'
+TIMESTAMP_BACKGROUND = '#c0c0c0'
 
 
 def ensure_directories():
@@ -28,6 +32,13 @@ def ensure_directories():
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
 
+def timestamp_worker(camera):
+    camera.annotate_background = Color(TIMESTAMP_BACKGROUND)
+    camera.annotate_foreground = Color(TIMESTAMP_FOREGROUND)
+    while not camera.closed:
+        camera.annotate_text = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        time.sleep(0.1)
+
 def camera_worker():
     def filename_generator():
         while True:
@@ -36,10 +47,13 @@ def camera_worker():
 
     with PiCamera(resolution=RESOLUTION, framerate=FRAMERATE) as camera:
         camera.rotation = 180
+        timestamp_thread = threading.Thread(target=timestamp_worker, args=(camera,))
+        timestamp_thread.start()
         for filename in camera.record_sequence(filename_generator(),
                 bitrate=BITRATE, quality=QUALITY):
             print(filename)
             camera.wait_recording(CLIP_TIME_SECONDS)
+    timestamp_worker.join()
 
 def retention_worker():
     while True:

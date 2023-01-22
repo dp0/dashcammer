@@ -1,4 +1,4 @@
-dashcammer (0.3.0) UNRELEASED; urgency=low
+dashcammer (0.3.1) UNRELEASED; urgency=low
 
   [ Daniel Playle ]
   * Keep install location consistent and support systemd
@@ -8,7 +8,7 @@ dashcammer (0.3.0) UNRELEASED; urgency=low
   * Add timestamps to videos
   * Support LED feedback
 
- -- Daniel Playle <code@danplayle.com>  Sun, 22 Jan 2023 22:30:22 +0000
+ -- Daniel Playle <code@danplayle.com>  Sun, 22 Jan 2023 22:34:51 +0000
 
 dashcammer (0.0.1) UNRELEASED; urgency=low
 

@@ -22,7 +22,7 @@ BITRATE = 15000000
 QUALITY = 25
 CLIP_TIME_SECONDS = 60
 # Extras
-TIMESTAMP_FORMAT = '%Y-%m-%d %H:%H:%S'
+TIMESTAMP_FORMAT = '%Y-%m-%d %H:%M:%S'
 TIMESTAMP_FOREGROUND = '#000000'
 TIMESTAMP_BACKGROUND = '#c0c0c0'
 
@@ -56,7 +56,7 @@ def camera_periodic_worker(camera, shutdown_threads):
         camera.annotate_background = Color(TIMESTAMP_BACKGROUND)
         camera.annotate_foreground = Color(TIMESTAMP_FOREGROUND)
         while not shutdown_threads.is_set():
-            camera.annotate_text = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            camera.annotate_text = datetime.datetime.now().strftime(TIMESTAMP_FORMAT)
             shutdown_threads.wait(timeout=0.1)
     except Exception as e:
         print(e)
@@ -93,7 +93,7 @@ def retention_worker(shutdown_threads):
             video_files = glob.glob(os.path.join(VIDEO_TEMP_LOCATION, '*.h264'))
             video_files.sort(key=os.path.getmtime)
             # Delete all but the latest 120 videos
-            for video_file in video_files[:-120]:
+            for video_file in video_files[:-VIDEO_TEMP_KEEP]:
                 os.unlink(video_file)
             # We shouldn't need to sleep for any less than this time as videos
             # *should* only be produced at this rate

@@ -7,6 +7,8 @@ import sys
 import threading
 import time
 
+import RPi.GPIO as GPIO
+
 from picamera import PiCamera, Color
 
 # Location of the semi-temporary video files from the camera
@@ -32,51 +34,113 @@ def ensure_directories():
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
 
-def timestamp_worker(camera):
-    camera.annotate_background = Color(TIMESTAMP_BACKGROUND)
-    camera.annotate_foreground = Color(TIMESTAMP_FOREGROUND)
-    while not camera.closed:
-        camera.annotate_text = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        time.sleep(0.1)
 
-def camera_worker():
-    def filename_generator():
-        while True:
-            datetime_iso8601 = datetime.datetime.now().astimezone().replace(microsecond=0).isoformat()
-            yield os.path.join(VIDEO_TEMP_LOCATION, f'{datetime_iso8601}.h264')
+def button_led_flash(frequency, cycles, pin=15, final_state=None):
+    state = False
+    for _ in range(cycles * 2):
+        if state:
+            GPIO.output(pin, GPIO.HIGH)
+        else:
+            GPIO.output(pin, GPIO.LOW)
+        time.sleep(0.5/frequency)
+        state = not state
+    if final_state is not None:
+        if final_state:
+            GPIO.output(pin, GPIO.HIGH)
+        else:
+            GPIO.output(pin, GPIO.LOW)
 
-    with PiCamera(resolution=RESOLUTION, framerate=FRAMERATE) as camera:
-        camera.rotation = 180
-        timestamp_thread = threading.Thread(target=timestamp_worker, args=(camera,))
-        timestamp_thread.start()
-        for filename in camera.record_sequence(filename_generator(),
-                bitrate=BITRATE, quality=QUALITY):
-            print(filename)
-            camera.wait_recording(CLIP_TIME_SECONDS)
-    timestamp_worker.join()
 
-def retention_worker():
-    while True:
-        video_files = glob.glob(os.path.join(VIDEO_TEMP_LOCATION, '*.h264'))
-        video_files.sort(key=os.path.getmtime)
-        # Delete all but the latest 120 videos
-        for video_file in video_files[:-120]:
-            os.unlink(video_file)
-        # We shouldn't need to sleep for any less than this time as videos
-        # *should* only be produced at this rate
-        time.sleep(CLIP_TIME_SECONDS)
+def camera_periodic_worker(camera, shutdown_threads):
+    try:
+        camera.annotate_background = Color(TIMESTAMP_BACKGROUND)
+        camera.annotate_foreground = Color(TIMESTAMP_FOREGROUND)
+        while not shutdown_threads.is_set():
+            camera.annotate_text = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            shutdown_threads.wait(timeout=0.1)
+    except Exception as e:
+        print(e)
+    finally:
+        shutdown_threads.set()
+        camera.stop_recording()
+
+
+def camera_worker(shutdown_threads):
+    try:
+        def filename_generator():
+            while not shutdown_threads.is_set():
+                datetime_iso8601 = datetime.datetime.now().astimezone().replace(microsecond=0).isoformat()
+                yield os.path.join(VIDEO_TEMP_LOCATION, f'{datetime_iso8601}.h264')
+
+        with PiCamera(resolution=RESOLUTION, framerate=FRAMERATE) as camera:
+            camera.rotation = 180
+            camera_periodic_thread = threading.Thread(target=camera_periodic_worker, args=(camera, shutdown_threads))
+            camera_periodic_thread.start()
+            for filename in camera.record_sequence(filename_generator(),
+                    bitrate=BITRATE, quality=QUALITY):
+                print(filename)
+                camera.wait_recording(CLIP_TIME_SECONDS)
+        camera_periodic_worker.join()
+    except Exception as e:
+        print(e)
+    finally:
+        shutdown_threads.set()
+
+
+def retention_worker(shutdown_threads):
+    try:
+        while not shutdown_threads.is_set():
+            video_files = glob.glob(os.path.join(VIDEO_TEMP_LOCATION, '*.h264'))
+            video_files.sort(key=os.path.getmtime)
+            # Delete all but the latest 120 videos
+            for video_file in video_files[:-120]:
+                os.unlink(video_file)
+            # We shouldn't need to sleep for any less than this time as videos
+            # *should* only be produced at this rate
+            shutdown_threads.wait(timeout=CLIP_TIME_SECONDS)
+    except Exception as e:
+        print(e)
+    finally:
+        shutdown_threads.set()
+
+
+def button_callback(channel):
+    try:
+        button_led_flash(5, 10, pin=15, final_state=True)
+    except Exception as e:
+        print(e)
 
 def main():
     ensure_directories()
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(15, GPIO.OUT)
+    GPIO.setup(14, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-    camera_thread = threading.Thread(target=camera_worker)
+    shutdown_threads = threading.Event()
+
+    camera_thread = threading.Thread(target=camera_worker, args=(shutdown_threads,))
+    retention_thread = threading.Thread(target=retention_worker, args=(shutdown_threads,))
+
     camera_thread.start()
-
-    retention_thread = threading.Thread(target=retention_worker)
     retention_thread.start()
+    GPIO.add_event_detect(14, GPIO.FALLING, callback=button_callback)
 
-    retention_thread.join()
-    camera_thread.join()
+    try:
+        button_led_flash(2, 10, pin=15, final_state=True)
+        shutdown_threads.wait()
+        print('Worker thread terminated')
+        return 1
+    except Exception as e:
+        print(e)
+    finally:
+        print('Got exception, terminating workers...')
+        shutdown_threads.set()
+        # Flash LED increasingly fast
+        for f in range(5,30):
+            button_led_flash(f, 1, pin=15, final_state=False)
+        # Free GPIO
+        GPIO.cleanup()
+
 
 if __name__ == '__main__':
     sys.exit(main())
